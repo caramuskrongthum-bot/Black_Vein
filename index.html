@@ -251,8 +251,8 @@
       getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile
     } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
     import {
-      getFirestore, doc, setDoc, arrayUnion, serverTimestamp
-    } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+      getDatabase, ref, update, serverTimestamp
+    } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js';
 
     // Firebase Config (project: bangkokcenter)
     const DEFAULT_FIREBASE_CONFIG = {
@@ -274,9 +274,12 @@
     let isSubmitting = false;
     let isClaiming = false;
 
-    const firestoreSettings = {
-      collectionName: 'users',
-      skin5FieldName: 'SKIN_05_IDENTIFY'
+    // ตำแหน่งเดียวกับที่เกมบันทึก: users/{uid}/data/SKIN_xx_IDENTIFY (Realtime Database)
+    const dbSettings = {
+      rootPath: 'users',
+      dataNode: 'data',
+      skin5FieldName: 'SKIN_05_IDENTIFY',
+      wearFieldName: 'SKIN_WEAR'
     };
 
     const $ = (id) => document.getElementById(id);
@@ -306,7 +309,7 @@
       try {
         app = getApps().length ? getApps()[0] : initializeApp(DEFAULT_FIREBASE_CONFIG);
         auth = getAuth(app);
-        db = getFirestore(app);
+        db = getDatabase(app);
         updateConnectionBadge(true, DEFAULT_FIREBASE_CONFIG.projectId);
       } catch (error) {
         console.error('Firebase Init Error:', error);
@@ -388,21 +391,11 @@
           currentUser = credential.user;
           await updateProfile(currentUser, { displayName: username });
 
-          const playerRef = doc(db, firestoreSettings.collectionName, currentUser.uid);
-          const initialPlayerData = {
-            uid: currentUser.uid,
-            username,
-            email,
-            coins: 0,
-            exp: 0,
-            SKIN_WEAR: 1,
-            SKIN_01_IDENTIFY: 1,
-            [firestoreSettings.skin5FieldName]: 0,
-            unlockedSkins: [1],
-            registeredVia: 'QR_EVENT_2026',
-            createdAt: serverTimestamp()
-          };
-          await setDoc(playerRef, initialPlayerData, { merge: true });
+          const dataRef = ref(db, `${dbSettings.rootPath}/${currentUser.uid}/${dbSettings.dataNode}`);
+          await update(dataRef, {
+            SKIN_01_IDENTIFY_: 1,
+            [dbSettings.skin5FieldName]: 0
+          });
           showToast('สร้างบัญชีเกม FOG สำเร็จ! กดรับสกินฟรีด้านล่างได้เลย', 'success');
         }
 
@@ -414,7 +407,7 @@
         else if (error.code === 'auth/weak-password') message = 'รหัสผ่านสั้นเกินไป กรุณาตั้งอย่างน้อย 6 ตัวอักษร';
         else if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') message = 'อีเมลหรือรหัสผ่านไม่ถูกต้อง กรุณาลองใหม่';
         else if (error.code === 'auth/invalid-email') message = 'รูปแบบอีเมลไม่ถูกต้อง';
-        else if (error.code === 'permission-denied' || error.code === 'firestore/permission-denied') message = 'Firebase ปฏิเสธการเขียนข้อมูล กรุณาตรวจสอบ Firestore Rules';
+        else if (String(error.code || error.message).toUpperCase().includes('PERMISSION')) message = 'Firebase ปฏิเสธการเขียนข้อมูล กรุณาตรวจสอบ Realtime Database Rules';
         showToast(message, 'error');
       } finally {
         isSubmitting = false;
@@ -448,14 +441,12 @@
         if (!db) {
           throw new Error('ระบบฐานข้อมูลยังไม่พร้อมใช้งาน');
         } else {
-          const playerRef = doc(db, firestoreSettings.collectionName, currentUser.uid);
+          const dataRef = ref(db, `${dbSettings.rootPath}/${currentUser.uid}/${dbSettings.dataNode}`);
           const updatePayload = {
-            [firestoreSettings.skin5FieldName]: 1,
-            unlockedSkins: arrayUnion(5),
-            claimedSkin5At: serverTimestamp()
+            [dbSettings.skin5FieldName]: 1
           };
-          if (equipNow) updatePayload.SKIN_WEAR = 5;
-          await setDoc(playerRef, updatePayload, { merge: true });
+          if (equipNow) updatePayload[dbSettings.wearFieldName] = 5;
+          await update(dataRef, updatePayload);
         }
 
         spawnCelebrationParticles(particlePosition);
@@ -466,7 +457,7 @@
         $('receipt-email').textContent = currentUser.email || '-';
 
         $('claim-success-description').textContent =
-          'Firebase ยืนยันการบันทึกสกินรหัส 5 ลงใน Firestore แล้ว กรุณาเข้าเกมด้วยบัญชีเดียวกัน';
+          'Firebase ยืนยันการบันทึกสกินรหัส 5 ลงใน Realtime Database แล้ว กรุณาเข้าเกมด้วยบัญชีเดียวกัน';
 
         showToast('ยินดีด้วย! ปลดล็อกสกินรหัส 5 สำเร็จแล้ว', 'success');
       } catch (error) {
