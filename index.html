@@ -255,17 +255,28 @@
       getFirestore, doc, setDoc, arrayUnion, serverTimestamp
     } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyCA4Vghk2WEmiDvHwLNCppKenAqxIs5Oe8",
-      authDomain: "bangkokcenter.firebaseapp.com",
-      databaseURL: "https://bangkokcenter-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "bangkokcenter",
-      storageBucket: "bangkokcenter.firebasestorage.app",
-      messagingSenderId: "711317947999",
-      appId: "1:711317947999:web:2a975e4948f31db1fb7dea",
-      measurementId: "G-JE9M9WMK9D"
-    };
+    // Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
 
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyCA4Vghk2WEmiDvHwLNCppKenAqxIs5Oe8",
+  authDomain: "bangkokcenter.firebaseapp.com",
+  databaseURL: "https://bangkokcenter-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "bangkokcenter",
+  storageBucket: "bangkokcenter.firebasestorage.app",
+  messagingSenderId: "711317947999",
+  appId: "1:711317947999:web:2a975e4948f31db1fb7dea",
+  measurementId: "G-JE9M9WMK9D"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
     let app = null;
     let auth = null;
     let db = null;
